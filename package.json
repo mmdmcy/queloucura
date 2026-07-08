@@ -1,0 +1,35 @@
+{
+  "name": "queloucura",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "description": "Open-source lab for testing productivity chat harness pressure, hallucination signals, and provider behavior.",
+  "scripts": {
+    "dev": "concurrently -k -n client,api \"node scripts/build-client.mjs --watch\" \"tsx watch src/server/server.ts\"",
+    "dev:api": "tsx watch src/server/server.ts",
+    "dev:client": "node scripts/build-client.mjs --watch",
+    "build": "node scripts/build-client.mjs && esbuild src/server/server.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/server/server.js",
+    "start": "NODE_ENV=production node dist/server/server.js",
+    "test": "node --import tsx --test \"src/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm test && npm run build"
+  },
+  "keywords": [
+    "llm",
+    "harness",
+    "hallucination",
+    "ollama",
+    "openai-compatible"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "concurrently": "^9.2.0",
+    "esbuild": "^0.28.1",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
