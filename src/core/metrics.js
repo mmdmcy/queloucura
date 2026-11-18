@@ -1,11 +1,13 @@
-import type {
-  ChatMessage,
-  MarkdownDiagnostics,
-  ProviderUsage,
-  ResponseStats
-} from "../shared/types";
+/** @typedef {import("../shared/types.js").ChatMessage} ChatMessage */
+/** @typedef {import("../shared/types.js").MarkdownDiagnostics} MarkdownDiagnostics */
+/** @typedef {import("../shared/types.js").ProviderUsage} ProviderUsage */
+/** @typedef {import("../shared/types.js").ResponseStats} ResponseStats */
 
-export function approxTokens(text: string): number {
+/**
+ * @param {string} text
+ * @returns {number}
+ */
+export function approxTokens(text) {
   const compact = text.trim();
   if (!compact) {
     return 0;
@@ -14,11 +16,20 @@ export function approxTokens(text: string): number {
   return Math.max(1, Math.ceil(compact.length / 4));
 }
 
-export function countMatches(text: string, pattern: RegExp): number {
+/**
+ * @param {string} text
+ * @param {RegExp} pattern a global pattern
+ * @returns {number}
+ */
+export function countMatches(text, pattern) {
   return [...text.matchAll(pattern)].length;
 }
 
-export function diagnoseMarkdown(text: string): MarkdownDiagnostics {
+/**
+ * @param {string} text
+ * @returns {MarkdownDiagnostics}
+ */
+export function diagnoseMarkdown(text) {
   const codeFenceCount = countMatches(text, /```/g);
   const markdownLinkCount = countMatches(text, /\[[^\]\n]+\]\([^) \n][^) \n]*\)/g);
   const emptyQuotePairCount = countMatches(text, /''/g);
@@ -53,15 +64,18 @@ export function diagnoseMarkdown(text: string): MarkdownDiagnostics {
   };
 }
 
-export function buildResponseStats(
-  messages: ChatMessage[],
-  content: string,
-  elapsedMs: number,
-  usage?: ProviderUsage
-): ResponseStats {
+/**
+ * @param {ChatMessage[]} messages
+ * @param {string} content
+ * @param {number} elapsedMs
+ * @param {ProviderUsage} [usage]
+ * @returns {ResponseStats}
+ */
+export function buildResponseStats(messages, content, elapsedMs, usage) {
   const promptText = messages.map((message) => `${message.role}: ${message.content}`).join("\n");
   const seconds = Math.max(elapsedMs / 1000, 0.001);
-  const stats: ResponseStats = {
+  /** @type {ResponseStats} */
+  const stats = {
     elapsedMs,
     promptChars: promptText.length,
     responseChars: content.length,

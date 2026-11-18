@@ -1,39 +1,35 @@
-import type { ChatMessage, ProviderConfig, ProviderUsage } from "../shared/types";
+/** @typedef {import("../shared/types.js").ChatMessage} ChatMessage */
+/** @typedef {import("../shared/types.js").ProviderConfig} ProviderConfig */
+/** @typedef {import("../shared/types.js").ProviderUsage} ProviderUsage */
+/** @typedef {import("../shared/types.js").ProviderResult} ProviderResult */
 
-export interface ProviderResult {
-  content: string;
-  usage?: ProviderUsage;
-}
+/**
+ * The fields of a /chat/completions answer that this adapter reads.
+ * @typedef {object} OpenAICompatibleResponse
+ * @property {{ message?: { content?: string }, text?: string }[]} [choices]
+ * @property {{ prompt_tokens?: number, completion_tokens?: number, total_tokens?: number }} [usage]
+ */
 
-interface OpenAICompatibleChoice {
-  message?: {
-    content?: string;
-  };
-  text?: string;
-}
-
-interface OpenAICompatibleResponse {
-  choices?: OpenAICompatibleChoice[];
-  usage?: {
-    prompt_tokens?: number;
-    completion_tokens?: number;
-    total_tokens?: number;
-  };
-}
-
-function normalizeBaseUrl(baseUrl: string): string {
+/**
+ * @param {string} baseUrl
+ * @returns {string}
+ */
+function normalizeBaseUrl(baseUrl) {
   return baseUrl.replace(/\/+$/, "");
 }
 
-export async function callOpenAICompatible(
-  provider: ProviderConfig,
-  messages: ChatMessage[],
-  temperature: number
-): Promise<ProviderResult> {
+/**
+ * @param {ProviderConfig} provider
+ * @param {ChatMessage[]} messages
+ * @param {number} temperature
+ * @returns {Promise<ProviderResult>}
+ */
+export async function callOpenAICompatible(provider, messages, temperature) {
   const baseUrl = normalizeBaseUrl(provider.baseUrl || process.env.OPENAI_BASE_URL || "https://api.openai.com/v1");
   const model = provider.model || process.env.OPENAI_MODEL || "gpt-4.1-mini";
   const apiKey = provider.apiKey || process.env.OPENAI_API_KEY;
-  const headers: Record<string, string> = {
+  /** @type {Record<string, string>} */
+  const headers = {
     "content-type": "application/json"
   };
 
@@ -62,17 +58,20 @@ export async function callOpenAICompatible(
     throw new Error(`OpenAI-compatible request failed (${response.status}): ${bodyText.slice(0, 800)}`);
   }
 
-  const body = JSON.parse(bodyText) as OpenAICompatibleResponse;
+  /** @type {OpenAICompatibleResponse} */
+  const body = JSON.parse(bodyText);
   const content = body.choices?.[0]?.message?.content ?? body.choices?.[0]?.text;
 
   if (!content) {
     throw new Error("OpenAI-compatible response did not include message content.");
   }
 
-  const result: ProviderResult = { content };
+  /** @type {ProviderResult} */
+  const result = { content };
 
   if (body.usage) {
-    const usage: ProviderUsage = {};
+    /** @type {ProviderUsage} */
+    const usage = {};
 
     if (typeof body.usage.prompt_tokens === "number") {
       usage.promptTokens = body.usage.prompt_tokens;

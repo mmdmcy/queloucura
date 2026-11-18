@@ -1,15 +1,15 @@
 # Architecture
 
-The app is a local TypeScript web tool with a small API server and an esbuild-bundled browser client.
+The app is a local JavaScript web tool with a small API server and a browser client, plain ES modules with no third-party dependencies and no build step.
 
 ## Runtime
 
-- `src/server/server.ts` exposes local API routes on `127.0.0.1:8787`.
-- `src/client/main.ts` renders the browser UI and keeps transcripts in memory.
-- `scripts/build-client.mjs` bundles the browser client into `dist/client`.
-- `src/core/harnessProfiles.ts` defines simulated harness profiles.
-- `src/core/probes.ts` defines repeatable prompts for known failure modes.
-- `src/core/metrics.ts` contains deterministic diagnostics and stats helpers.
+- `src/server/server.js` exposes local API routes on `127.0.0.1:8787` and serves `index.html` and the `src/client/`, `src/core/` and `src/shared/` modules to the browser as they are.
+- `src/client/main.js` renders the browser UI and keeps transcripts in memory.
+- `src/shared/types.js` holds the shared JSDoc types.
+- `src/core/harnessProfiles.js` defines simulated harness profiles.
+- `src/core/probes.js` defines repeatable prompts for known failure modes.
+- `src/core/metrics.js` contains deterministic diagnostics and stats helpers.
 - `src/providers/` contains provider adapters for Ollama and OpenAI-compatible APIs.
 
 ## Data Flow

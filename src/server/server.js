@@ -1,19 +1,32 @@
 import { createReadStream, existsSync, statSync } from "node:fs";
-import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { extname, isAbsolute, join, normalize, relative, resolve } from "node:path";
+import { createServer } from "node:http";
+import { extname, isAbsolute, join, normalize, relative, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 
-import { buildSystemPrompt, HARNESS_PROFILES } from "../core/harnessProfiles";
-import { PROBES } from "../core/probes";
-import { buildResponseStats, diagnoseMarkdown } from "../core/metrics";
-import { callOllama, listOllamaModels } from "../providers/ollama";
-import { callOpenAICompatible } from "../providers/openaiCompatible";
-import type { ApiError, ChatMessage, ChatRequest, ChatResponse, ProviderConfig } from "../shared/types";
+import { buildSystemPrompt, HARNESS_PROFILES } from "../core/harnessProfiles.js";
+import { PROBES } from "../core/probes.js";
+import { buildResponseStats, diagnoseMarkdown } from "../core/metrics.js";
+import { callOllama, listOllamaModels } from "../providers/ollama.js";
+import { callOpenAICompatible } from "../providers/openaiCompatible.js";
+
+/** @typedef {import("node:http").IncomingMessage} IncomingMessage */
+/** @typedef {import("node:http").ServerResponse} ServerResponse */
+/** @typedef {import("../shared/types.js").ApiError} ApiError */
+/** @typedef {import("../shared/types.js").ChatMessage} ChatMessage */
+/** @typedef {import("../shared/types.js").ChatRequest} ChatRequest */
+/** @typedef {import("../shared/types.js").ChatResponse} ChatResponse */
+/** @typedef {import("../shared/types.js").ProviderConfig} ProviderConfig */
 
 const port = Number(process.env.PORT || 8787);
-const staticRoot = resolve(process.cwd(), "dist/client");
+// The browser loads the page and its modules straight from the source tree:
+// index.html, and the client, core and shared folders it imports. Nothing
+// else under the repository root is served.
+const appRoot = fileURLToPath(new URL("../../", import.meta.url));
+const publicFolders = ["src/client/", "src/core/", "src/shared/"];
 const maxBodyBytes = 1_000_000;
 
-const mimeTypes: Record<string, string> = {
+/** @type {Record<string, string>} */
+const mimeTypes = {
   ".css": "text/css; charset=utf-8",
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
@@ -23,7 +36,12 @@ const mimeTypes: Record<string, string> = {
   ".ico": "image/x-icon"
 };
 
-function sendJson(response: ServerResponse, status: number, payload: unknown): void {
+/**
+ * @param {ServerResponse} response
+ * @param {number} status
+ * @param {unknown} payload
+ */
+function sendJson(response, status, payload) {
   response.writeHead(status, {
     "content-type": "application/json; charset=utf-8",
     "access-control-allow-origin": "*",
@@ -33,13 +51,25 @@ function sendJson(response: ServerResponse, status: number, payload: unknown): v
   response.end(JSON.stringify(payload, null, 2));
 }
 
-function sendError(response: ServerResponse, status: number, error: string, detail?: string): void {
-  const payload: ApiError = detail ? { error, detail } : { error };
+/**
+ * @param {ServerResponse} response
+ * @param {number} status
+ * @param {string} error
+ * @param {string} [detail]
+ */
+function sendError(response, status, error, detail) {
+  /** @type {ApiError} */
+  const payload = detail ? { error, detail } : { error };
   sendJson(response, status, payload);
 }
 
-async function readJsonBody<T>(request: IncomingMessage): Promise<T> {
-  const chunks: Buffer[] = [];
+/**
+ * @param {IncomingMessage} request
+ * @returns {Promise<any>}
+ */
+async function readJsonBody(request) {
+  /** @type {Buffer[]} */
+  const chunks = [];
   let size = 0;
 
   for await (const chunk of request) {
@@ -53,10 +83,13 @@ async function readJsonBody<T>(request: IncomingMessage): Promise<T> {
     chunks.push(buffer);
   }
 
-  return JSON.parse(Buffer.concat(chunks).toString("utf8")) as T;
+  return JSON.parse(Buffer.concat(chunks).toString("utf8"));
 }
 
-function validateChatRequest(value: ChatRequest): void {
+/**
+ * @param {ChatRequest} value
+ */
+function validateChatRequest(value) {
   if (!value.provider?.kind) {
     throw new Error("provider.kind is required.");
   }
@@ -80,7 +113,11 @@ function validateChatRequest(value: ChatRequest): void {
   }
 }
 
-function composeMessages(request: ChatRequest): { profileName: string; stressors: string[]; messages: ChatMessage[] } {
+/**
+ * @param {ChatRequest} request
+ * @returns {{ profileName: string, stressors: string[], messages: ChatMessage[] }}
+ */
+function composeMessages(request) {
   const profile = buildSystemPrompt(request.profileId, request.settings);
   return {
     profileName: profile.name,
@@ -89,7 +126,12 @@ function composeMessages(request: ChatRequest): { profileName: string; stressors
   };
 }
 
-async function runProvider(provider: ProviderConfig, messages: ChatMessage[], temperature: number) {
+/**
+ * @param {ProviderConfig} provider
+ * @param {ChatMessage[]} messages
+ * @param {number} temperature
+ */
+async function runProvider(provider, messages, temperature) {
   if (provider.kind === "ollama") {
     return callOllama(provider, messages, temperature);
   }
@@ -101,8 +143,13 @@ async function runProvider(provider: ProviderConfig, messages: ChatMessage[], te
   throw new Error(`Unsupported provider: ${provider.kind}`);
 }
 
-async function handleChat(request: IncomingMessage, response: ServerResponse): Promise<void> {
-  const body = await readJsonBody<ChatRequest>(request);
+/**
+ * @param {IncomingMessage} request
+ * @param {ServerResponse} response
+ */
+async function handleChat(request, response) {
+  /** @type {ChatRequest} */
+  const body = await readJsonBody(request);
   validateChatRequest(body);
 
   const { profileName, stressors, messages } = composeMessages(body);
@@ -110,7 +157,8 @@ async function handleChat(request: IncomingMessage, response: ServerResponse): P
   const providerResult = await runProvider(body.provider, messages, body.settings.temperature);
   const elapsedMs = Math.round(performance.now() - started);
   const stats = buildResponseStats(messages, providerResult.content, elapsedMs, providerResult.usage);
-  const result: ChatResponse = {
+  /** @type {ChatResponse} */
+  const result = {
     content: providerResult.content,
     provider: {
       kind: body.provider.kind,
@@ -128,7 +176,11 @@ async function handleChat(request: IncomingMessage, response: ServerResponse): P
   sendJson(response, 200, result);
 }
 
-async function handleModels(url: URL, response: ServerResponse): Promise<void> {
+/**
+ * @param {URL} url
+ * @param {ServerResponse} response
+ */
+async function handleModels(url, response) {
   const provider = url.searchParams.get("provider");
 
   if (provider !== "ollama") {
@@ -141,23 +193,34 @@ async function handleModels(url: URL, response: ServerResponse): Promise<void> {
   sendJson(response, 200, { models });
 }
 
-function serveStatic(response: ServerResponse, url: URL, headOnly = false): void {
-  if (!existsSync(staticRoot)) {
-    response.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
-    response.end("Queloucura API is running. Build the client with npm run dev:client or npm run build.");
-    return;
+/**
+ * @param {string} relativePath a path relative to the app root, with forward slashes
+ * @returns {boolean}
+ */
+function isPublic(relativePath) {
+  if (relativePath === "index.html") {
+    return true;
   }
 
+  return !relativePath.endsWith(".test.js") && publicFolders.some((folder) => relativePath.startsWith(folder));
+}
+
+/**
+ * @param {ServerResponse} response
+ * @param {URL} url
+ * @param {boolean} [headOnly]
+ */
+function serveStatic(response, url, headOnly = false) {
   const requestedPath = url.pathname === "/" ? "/index.html" : decodeURIComponent(url.pathname);
-  const filePath = normalize(join(staticRoot, requestedPath));
-  const relativePath = relative(staticRoot, filePath);
+  const filePath = normalize(join(appRoot, requestedPath));
+  const relativePath = relative(appRoot, filePath);
 
   if (relativePath.startsWith("..") || isAbsolute(relativePath)) {
     sendError(response, 403, "Forbidden");
     return;
   }
 
-  if (!existsSync(filePath) || !statSync(filePath).isFile()) {
+  if (!isPublic(relativePath.split(sep).join("/")) || !existsSync(filePath) || !statSync(filePath).isFile()) {
     response.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
     response.end("Not found");
     return;
@@ -213,7 +276,7 @@ const server = createServer((request, response) => {
     }
 
     sendError(response, 404, "Not found");
-  })().catch((error: unknown) => {
+  })().catch((/** @type {unknown} */ error) => {
     const message = error instanceof Error ? error.message : "Unexpected server error.";
     sendError(response, 500, "Request failed", message);
   });

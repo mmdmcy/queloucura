@@ -1,6 +1,5 @@
-import type { Probe } from "../shared/types";
-
-export const PROBES: Probe[] = [
+/** @type {import("../shared/types.js").Probe[]} */
+export const PROBES = [
   {
     id: "download-link",
     name: "Download Link",

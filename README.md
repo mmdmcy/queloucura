@@ -1,6 +1,6 @@
 # Queloucura
 
-Queloucura is an open-source TypeScript app for experimenting with productivity chat harness behavior. It does not include or claim access to proprietary prompts, internal safety policies, office documents, private tenant data, or commercial toolchains. The goal is to model common product pressures, run the same prompt across harness profiles, and collect visible diagnostics when a model starts inventing files, citations, sandbox results, or broken markdown.
+Queloucura is an open-source JavaScript app for experimenting with productivity chat harness behavior. It does not include or claim access to proprietary prompts, internal safety policies, office documents, private tenant data, or commercial toolchains. The goal is to model common product pressures, run the same prompt across harness profiles, and collect visible diagnostics when a model starts inventing files, citations, sandbox results, or broken markdown.
 
 ## What It Does
 
@@ -13,10 +13,11 @@ Queloucura is an open-source TypeScript app for experimenting with productivity 
 ## Quick Start
 
 ```bash
-npm install
 cp .env.example .env
 npm run dev
 ```
+
+It needs Node.js 20 or newer and nothing else: no `npm install`, no build step.
 
 Open `http://127.0.0.1:8787`.
 
@@ -32,13 +33,14 @@ For an OpenAI-compatible provider, set `OPENAI_API_KEY`, choose `OpenAI-compatib
 ## Commands
 
 ```bash
-npm run dev       # Client bundle watcher plus API/UI server
-npm run test      # Node test runner
-npm run typecheck # TypeScript checks
-npm run build     # Production build
-npm start         # Serve production build on 127.0.0.1:8787
-npm run check     # Typecheck, test, and build
+npm run dev       # API/UI server, restarted when a file changes
+npm test          # Node test runner (node --test)
+npm start         # API/UI server on 127.0.0.1:8787
 ```
+
+## Stack
+
+Plain JavaScript ES modules with no third-party dependencies. The server uses Node's built-in `http` module; the browser loads `index.html`, `src/client/`, `src/core/` and `src/shared/` as they are, with no bundler. Types are JSDoc comments (`src/shared/types.js`), so an editor or `tsc --checkJs` can still check them, but nothing needs to compile.
 
 ## Visibility
 

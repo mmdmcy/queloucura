@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { approxTokens, buildResponseStats, diagnoseMarkdown } from "./metrics";
+import { approxTokens, buildResponseStats, diagnoseMarkdown } from "./metrics.js";
 
 test("approxTokens returns zero for blank text", () => {
   assert.equal(approxTokens("   "), 0);

@@ -1,6 +1,9 @@
-import type { HarnessProfile, HarnessProfileId, HarnessSettings } from "../shared/types";
+/** @typedef {import("../shared/types.js").HarnessProfile} HarnessProfile */
+/** @typedef {import("../shared/types.js").HarnessProfileId} HarnessProfileId */
+/** @typedef {import("../shared/types.js").HarnessSettings} HarnessSettings */
 
-export const DEFAULT_SETTINGS: HarnessSettings = {
+/** @type {HarnessSettings} */
+export const DEFAULT_SETTINGS = {
   temperature: 0.2,
   citationPressure: 2,
   artifactPressure: 1,
@@ -8,7 +11,8 @@ export const DEFAULT_SETTINGS: HarnessSettings = {
   answerWhenUnsure: false
 };
 
-export const HARNESS_PROFILES: HarnessProfile[] = [
+/** @type {HarnessProfile[]} */
+export const HARNESS_PROFILES = [
   {
     id: "direct",
     name: "Direct Baseline",
@@ -59,7 +63,11 @@ export const HARNESS_PROFILES: HarnessProfile[] = [
   }
 ];
 
-export function getHarnessProfile(id: HarnessProfileId): HarnessProfile {
+/**
+ * @param {HarnessProfileId} id
+ * @returns {HarnessProfile}
+ */
+export function getHarnessProfile(id) {
   const profile = HARNESS_PROFILES.find((item) => item.id === id);
 
   if (!profile) {
@@ -69,9 +77,15 @@ export function getHarnessProfile(id: HarnessProfileId): HarnessProfile {
   return profile;
 }
 
-export function buildSystemPrompt(id: HarnessProfileId, settings: HarnessSettings): HarnessProfile {
+/**
+ * @param {HarnessProfileId} id
+ * @param {HarnessSettings} settings
+ * @returns {HarnessProfile}
+ */
+export function buildSystemPrompt(id, settings) {
   const base = getHarnessProfile(id);
-  const additions: string[] = [];
+  /** @type {string[]} */
+  const additions = [];
   const stressors = [...base.stressors];
 
   if (settings.safetyPressure >= 2) {

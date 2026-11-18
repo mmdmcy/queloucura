@@ -1,33 +1,33 @@
-import { DEFAULT_SETTINGS, HARNESS_PROFILES } from "../core/harnessProfiles";
-import { PROBES } from "../core/probes";
-import { approxTokens } from "../core/metrics";
-import type {
-  ChatMessage,
-  ChatResponse,
-  HarnessProfileId,
-  HarnessSettings,
-  ProviderKind
-} from "../shared/types";
+import { DEFAULT_SETTINGS, HARNESS_PROFILES } from "../core/harnessProfiles.js";
+import { PROBES } from "../core/probes.js";
+import { approxTokens } from "../core/metrics.js";
 
-import "./styles.css";
+/** @typedef {import("../shared/types.js").ChatMessage} ChatMessage */
+/** @typedef {import("../shared/types.js").ChatResponse} ChatResponse */
+/** @typedef {import("../shared/types.js").HarnessProfileId} HarnessProfileId */
+/** @typedef {import("../shared/types.js").HarnessSettings} HarnessSettings */
+/** @typedef {import("../shared/types.js").ProviderKind} ProviderKind */
+/** @typedef {ChatResponse | { error: string, detail?: string }} ApiResult */
 
-type ApiResult = ChatResponse | { error: string; detail?: string };
-
-interface ConversationItem extends ChatMessage {
-  diagnostics?: ChatResponse["diagnostics"];
-  stats?: ChatResponse["stats"];
-}
+/**
+ * A transcript entry; an assistant answer also carries its diagnostics and stats.
+ * @typedef {ChatMessage & { diagnostics?: ChatResponse["diagnostics"], stats?: ChatResponse["stats"] }} ConversationItem
+ */
 
 const state = {
-  messages: [] as ConversationItem[],
+  /** @type {ConversationItem[]} */
+  messages: [],
   settings: { ...DEFAULT_SETTINGS },
-  lastResponse: undefined as ChatResponse | undefined,
-  comparison: [] as ChatResponse[],
+  /** @type {ChatResponse | undefined} */
+  lastResponse: undefined,
+  /** @type {ChatResponse[]} */
+  comparison: [],
   activeRequestStarted: 0,
-  timerId: undefined as number | undefined
+  /** @type {number | undefined} */
+  timerId: undefined
 };
 
-document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
+/** @type {HTMLDivElement} */ (document.querySelector("#app")).innerHTML = `
   <header class="topbar">
     <div>
       <p class="eyebrow">Open harness lab</p>
@@ -135,37 +135,45 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
 `;
 
 const els = {
-  providerKind: byId<HTMLSelectElement>("provider-kind"),
-  baseUrl: byId<HTMLInputElement>("base-url"),
-  model: byId<HTMLInputElement>("model"),
-  apiKey: byId<HTMLInputElement>("api-key"),
-  apiKeyField: byId<HTMLLabelElement>("api-key-field"),
-  profile: byId<HTMLSelectElement>("profile"),
-  probe: byId<HTMLSelectElement>("probe"),
-  prompt: byId<HTMLTextAreaElement>("prompt"),
-  composer: byId<HTMLFormElement>("composer"),
-  transcript: byId<HTMLElement>("transcript"),
-  stats: byId<HTMLElement>("stats"),
-  diagnostics: byId<HTMLElement>("diagnostics"),
-  comparison: byId<HTMLElement>("comparison"),
-  status: byId<HTMLElement>("connection-status"),
-  elapsed: byId<HTMLElement>("live-elapsed"),
-  temperature: byId<HTMLInputElement>("temperature"),
-  temperatureOutput: byId<HTMLOutputElement>("temperature-output"),
-  citationPressure: byId<HTMLInputElement>("citation-pressure"),
-  citationOutput: byId<HTMLOutputElement>("citation-output"),
-  artifactPressure: byId<HTMLInputElement>("artifact-pressure"),
-  artifactOutput: byId<HTMLOutputElement>("artifact-output"),
-  safetyPressure: byId<HTMLInputElement>("safety-pressure"),
-  safetyOutput: byId<HTMLOutputElement>("safety-output"),
-  answerWhenUnsure: byId<HTMLInputElement>("answer-when-unsure")
+  providerKind: /** @type {HTMLSelectElement} */ (byId("provider-kind")),
+  baseUrl: /** @type {HTMLInputElement} */ (byId("base-url")),
+  model: /** @type {HTMLInputElement} */ (byId("model")),
+  apiKey: /** @type {HTMLInputElement} */ (byId("api-key")),
+  apiKeyField: /** @type {HTMLLabelElement} */ (byId("api-key-field")),
+  profile: /** @type {HTMLSelectElement} */ (byId("profile")),
+  probe: /** @type {HTMLSelectElement} */ (byId("probe")),
+  prompt: /** @type {HTMLTextAreaElement} */ (byId("prompt")),
+  composer: /** @type {HTMLFormElement} */ (byId("composer")),
+  transcript: /** @type {HTMLElement} */ (byId("transcript")),
+  stats: /** @type {HTMLElement} */ (byId("stats")),
+  diagnostics: /** @type {HTMLElement} */ (byId("diagnostics")),
+  comparison: /** @type {HTMLElement} */ (byId("comparison")),
+  status: /** @type {HTMLElement} */ (byId("connection-status")),
+  elapsed: /** @type {HTMLElement} */ (byId("live-elapsed")),
+  temperature: /** @type {HTMLInputElement} */ (byId("temperature")),
+  temperatureOutput: /** @type {HTMLOutputElement} */ (byId("temperature-output")),
+  citationPressure: /** @type {HTMLInputElement} */ (byId("citation-pressure")),
+  citationOutput: /** @type {HTMLOutputElement} */ (byId("citation-output")),
+  artifactPressure: /** @type {HTMLInputElement} */ (byId("artifact-pressure")),
+  artifactOutput: /** @type {HTMLOutputElement} */ (byId("artifact-output")),
+  safetyPressure: /** @type {HTMLInputElement} */ (byId("safety-pressure")),
+  safetyOutput: /** @type {HTMLOutputElement} */ (byId("safety-output")),
+  answerWhenUnsure: /** @type {HTMLInputElement} */ (byId("answer-when-unsure"))
 };
 
-function byId<T extends HTMLElement>(id: string): T {
-  return document.getElementById(id) as T;
+/**
+ * @param {string} id
+ * @returns {HTMLElement}
+ */
+function byId(id) {
+  return /** @type {HTMLElement} */ (document.getElementById(id));
 }
 
-function escapeHtml(value: string): string {
+/**
+ * @param {string} value
+ * @returns {string}
+ */
+function escapeHtml(value) {
   return value
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
@@ -174,7 +182,7 @@ function escapeHtml(value: string): string {
     .replaceAll("'", "&#039;");
 }
 
-function populateControls(): void {
+function populateControls() {
   els.profile.innerHTML = HARNESS_PROFILES.map(
     (profile) => `<option value="${profile.id}">${escapeHtml(profile.name)}</option>`
   ).join("");
@@ -184,11 +192,17 @@ function populateControls(): void {
   renderTranscript();
 }
 
-function providerKind(): ProviderKind {
-  return els.providerKind.value as ProviderKind;
+/**
+ * @returns {ProviderKind}
+ */
+function providerKind() {
+  return /** @type {ProviderKind} */ (els.providerKind.value);
 }
 
-function currentSettings(): HarnessSettings {
+/**
+ * @returns {HarnessSettings}
+ */
+function currentSettings() {
   return {
     temperature: Number(els.temperature.value),
     citationPressure: Number(els.citationPressure.value),
@@ -198,11 +212,15 @@ function currentSettings(): HarnessSettings {
   };
 }
 
-function requestMessages(prompt?: string): ChatMessage[] {
+/**
+ * @param {string} [prompt]
+ * @returns {ChatMessage[]}
+ */
+function requestMessages(prompt) {
   const base = state.messages.map(({ role, content }) => ({ role, content }));
 
   if (prompt) {
-    return [...base, { role: "user", content: prompt }];
+    return [...base, { role: /** @type {const} */ ("user"), content: prompt }];
   }
 
   return base;
@@ -217,7 +235,12 @@ function readProvider() {
   };
 }
 
-async function postChat(profileId: HarnessProfileId, messages: ChatMessage[]): Promise<ChatResponse> {
+/**
+ * @param {HarnessProfileId} profileId
+ * @param {ChatMessage[]} messages
+ * @returns {Promise<ChatResponse>}
+ */
+async function postChat(profileId, messages) {
   const response = await fetch("/api/chat", {
     method: "POST",
     headers: {
@@ -230,7 +253,8 @@ async function postChat(profileId: HarnessProfileId, messages: ChatMessage[]): P
       settings: currentSettings()
     })
   });
-  const result = (await response.json()) as ApiResult;
+  /** @type {ApiResult} */
+  const result = await response.json();
 
   if (!response.ok || "error" in result) {
     const detail = "detail" in result && result.detail ? ` ${result.detail}` : "";
@@ -240,14 +264,14 @@ async function postChat(profileId: HarnessProfileId, messages: ChatMessage[]): P
   return result;
 }
 
-async function sendPrompt(): Promise<void> {
+async function sendPrompt() {
   const prompt = els.prompt.value.trim();
 
   if (!prompt) {
     return;
   }
 
-  const profileId = els.profile.value as HarnessProfileId;
+  const profileId = /** @type {HarnessProfileId} */ (els.profile.value);
   const outgoing = requestMessages(prompt);
   state.messages.push({ role: "user", content: prompt });
   els.prompt.value = "";
@@ -277,7 +301,7 @@ async function sendPrompt(): Promise<void> {
   }
 }
 
-async function compareProfiles(): Promise<void> {
+async function compareProfiles() {
   const prompt = els.prompt.value.trim();
 
   if (!prompt) {
@@ -291,10 +315,10 @@ async function compareProfiles(): Promise<void> {
   try {
     const messages = requestMessages(prompt);
     const results = await Promise.all(
-      HARNESS_PROFILES.map((profile) => postChat(profile.id, messages).catch((error: unknown) => ({ error, profile })))
+      HARNESS_PROFILES.map((profile) => postChat(profile.id, messages).catch((/** @type {unknown} */ error) => ({ error, profile })))
     );
     state.comparison = results
-      .filter((result): result is ChatResponse => !("error" in result))
+      .filter(/** @returns {result is ChatResponse} */ (result) => !("error" in result))
       .sort((left, right) => right.diagnostics.issueCount - left.diagnostics.issueCount);
     setStatus("Comparison complete");
   } catch {
@@ -305,7 +329,7 @@ async function compareProfiles(): Promise<void> {
   }
 }
 
-function renderTranscript(): void {
+function renderTranscript() {
   if (state.messages.length === 0) {
     els.transcript.innerHTML = `
       <div class="empty-state">
@@ -333,10 +357,11 @@ function renderTranscript(): void {
   els.transcript.scrollTop = els.transcript.scrollHeight;
 }
 
-function renderStats(): void {
+function renderStats() {
   const prompt = els.prompt.value;
   const response = state.lastResponse;
-  const rows: Array<[string, string]> = response
+  /** @type {Array<[string, string]>} */
+  const rows = response
     ? [
         ["Provider", `${response.provider.kind} · ${response.provider.model}`],
         ["Harness", response.harness.name],
@@ -359,7 +384,7 @@ function renderStats(): void {
   renderDiagnostics();
 }
 
-function renderDiagnostics(): void {
+function renderDiagnostics() {
   const diagnostics = state.lastResponse?.diagnostics;
 
   if (!diagnostics) {
@@ -381,7 +406,7 @@ function renderDiagnostics(): void {
     .join("");
 }
 
-function renderComparison(): void {
+function renderComparison() {
   if (state.comparison.length === 0) {
     els.comparison.innerHTML = "<p class=\"muted\">No comparison run.</p>";
     return;
@@ -399,9 +424,9 @@ function renderComparison(): void {
     )
     .join("");
 
-  els.comparison.querySelectorAll<HTMLButtonElement>(".comparison-row").forEach((button) => {
+  els.comparison.querySelectorAll(".comparison-row").forEach((button) => {
     button.addEventListener("click", () => {
-      const response = state.comparison.find((item) => item.harness.id === button.dataset.profile);
+      const response = state.comparison.find((item) => item.harness.id === /** @type {HTMLButtonElement} */ (button).dataset.profile);
       if (!response) {
         return;
       }
@@ -418,7 +443,10 @@ function renderComparison(): void {
   });
 }
 
-function startTimer(status: string): void {
+/**
+ * @param {string} status
+ */
+function startTimer(status) {
   state.activeRequestStarted = performance.now();
   setStatus(status);
   window.clearInterval(state.timerId);
@@ -427,16 +455,19 @@ function startTimer(status: string): void {
   }, 80);
 }
 
-function stopTimer(): void {
+function stopTimer() {
   window.clearInterval(state.timerId);
   state.timerId = undefined;
 }
 
-function setStatus(status: string): void {
+/**
+ * @param {string} status
+ */
+function setStatus(status) {
   els.status.textContent = status;
 }
 
-function syncProviderDefaults(): void {
+function syncProviderDefaults() {
   if (providerKind() === "ollama") {
     els.baseUrl.value = "http://localhost:11434";
     els.model.value = "llama3.1";
@@ -450,7 +481,7 @@ function syncProviderDefaults(): void {
   renderStats();
 }
 
-async function refreshModels(): Promise<void> {
+async function refreshModels() {
   if (providerKind() !== "ollama") {
     return;
   }
@@ -461,7 +492,8 @@ async function refreshModels(): Promise<void> {
     url.searchParams.set("provider", "ollama");
     url.searchParams.set("baseUrl", els.baseUrl.value.trim());
     const response = await fetch(url);
-    const result = (await response.json()) as { models?: string[]; error?: string };
+    /** @type {{ models?: string[], error?: string }} */
+    const result = await response.json();
 
     if (!response.ok || result.error) {
       throw new Error(result.error || "Model lookup failed.");
@@ -477,7 +509,7 @@ async function refreshModels(): Promise<void> {
   }
 }
 
-function loadProbe(): void {
+function loadProbe() {
   const probe = PROBES.find((item) => item.id === els.probe.value);
 
   if (probe) {
@@ -486,7 +518,7 @@ function loadProbe(): void {
   }
 }
 
-function wireEvents(): void {
+function wireEvents() {
   els.composer.addEventListener("submit", (event) => {
     event.preventDefault();
     void sendPrompt();
